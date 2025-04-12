@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{title}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{description}" />
+  <meta name="keywords" content="PGP, encrypted upload, secure file transfer, OpenPGP, privacy, secure gateway, {brand}" />
+  <meta name="author" content="{author}" />
+  <meta property="og:title" content="{title}" />
+  <meta property="og:description" content="{description}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{url}" />
+  <meta property="og:image" content="{previewImage}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{title}" />
+  <meta name="twitter:description" content="{description}" />
+  <meta name="twitter:image" content="{previewImage}" />
+  <link rel="icon" href="{favicon}" />
+  <link rel="stylesheet" href="/landing.css" />
+</head>
+<body>
+  <main class="landing-container">
+    <h1>Welcome to <strong>{brand}</strong></h1>
+    <p>{tagline}</p>
+
+    <section class="cta">
+      <a class="start-button" href="/register">⚡ Try Secure Upload</a>
+      <p><small>Start in 60 seconds — no sign-up, no tracking.</small></p>      
+    </section>
+
+    <section class="features">
+      <ul>
+        <li>🔐 <strong>Zero-Trust Uploads</strong> — Files are encrypted in-browser with OpenPGP. The server never sees your plaintext.</li>
+        <li>📥 <strong>Upload Routing</strong> — Encrypted messages can update webhook destinations or store files based on the key used.</li>
+        <li>🧾 <strong>PGP-Signed Identity</strong> — We trust your public key and nothing else. Endpoints are tied to verifiable identities.</li>
+        <li>🪪 <strong>Signed Acknowledgments</strong> — All server responses are signed using the gateway’s private key.</li>
+        <li>💡 <strong>Client-Side Checksum + Verification</strong> — See and verify SHA-256 before and after encryption.</li>
+      </ul>
+    </section>
+
+    <section class="demo">
+      <h2>🧾 Register via CLI</h2>
+      <p>Use your PGP key to register a secure drop zone in minutes:</p>
+    
+      <div class="cli-steps">
+        <p><strong>Step 1: Export your PGP public key</strong></p>
+        <div class="code-block">
+          <div class="code-scroll">
+            <code>gpg --armor --export you@example.com > pubkey.asc</code>
+          </div>
+          <button class="copy-icon" onclick="copyCode(this)">📋</button>
+        </div>
+      
+        <p><strong>Step 2: Download our public key</strong></p>
+        <div class="code-block">
+          <div class="code-scroll">
+            <code>curl https://{fqdn}/key -o upgp.asc</code>
+          </div>
+          <button class="copy-icon" onclick="copyCode(this)">📋</button>
+        </div>
+      
+        <p><strong>Step 3: Encrypt your key for the server</strong></p>
+        <div class="code-block">
+          <div class="code-scroll">
+            <code>gpg --encrypt --recipient-file upgp.asc pubkey.asc > encrypted.asc</code>
+          </div>
+          <button class="copy-icon" onclick="copyCode(this)">📋</button>
+        </div>
+      
+        <p><strong>Step 4: Upload it to register</strong></p>
+        <div class="code-block">
+          <div class="code-scroll">
+            <code>cat encrypted.asc | sed ':a;N;$!ba;s/\n/\\n/g' | awk '{print \"{\\\"content\\\":\\\"\" $0 \"\\\"}\"}' &gt; payload.json</code>
+          </div>
+          <button class="copy-icon" onclick="copyCode(this)">📋</button>
+        </div>
+      
+        <div class="code-block">
+          <div class="code-scroll">
+            <code>curl -X POST https://{fqdn}/register/upload -H "Content-Type: application/json" --data @payload.json</code>
+          </div>
+          <button class="copy-icon" onclick="copyCode(this)">📋</button>
+        </div>
+      </div>      
+    
+      <p>You’ll get a signed response with your personal endpoint, ready to use or route.</p>
+    </section>    
+
+    <section class="why-zero-trust">
+      <h2>🤔 Why Zero Trust?</h2>
+      <p><strong>{brand}</strong> eliminates reliance on server-side security assumptions. Your key is your identity and your protection.</p>
+      <ul>
+        <li>✅ No accounts or passwords</li>
+        <li>✅ Data stays encrypted end-to-end</li>
+        <li>✅ Fully verifiable and transparent</li>
+      </ul>
+    </section>
+
+    <section class="cta">
+      <a class="start-button" href="/register">{ctaText}</a>
+      <p><small>🔍 View source • Trust the code, not the company</small></p>
+    </section>
+
+    <details class="how-it-works">
+      <summary>🧠 How It Works (Deep Dive)</summary>
+      <div class="how-it-works-content">
+        <p><strong>1. You Encrypt</strong> — Data is encrypted locally with OpenPGP using the recipient's key.</p>
+        <p><strong>2. You Upload</strong> — Content is submitted to the server. If encrypted for the gateway, it’s interpreted as a metadata update.</p>
+        <p><strong>3. The Server Verifies</strong> — All signed data is verified. Invalid messages are rejected without exception.</p>
+        <p><strong>4. You Control Routing</strong> — Valid signed JSON payloads can define where future encrypted data gets forwarded.</p>
+        <p><strong>5. Server Responds With Signature</strong> — Every valid response is cryptographically signed with the gateway’s key.</p>
+      </div>
+    </details>
+
+    <footer class="contact-footer">
+      <h2>🔗 Credentials & Contact</h2>
+      <ul>
+        <li>📇 GitHub: <a href="https://github.com/upgp-xyz/upgp-frontend" target="_blank" rel="noopener">upgp-xyz/upgp-frontend</a></li>
+        <li>💼 LinkedIn: <a href="https://www.linkedin.com/in/enriqueramon" target="_blank" rel="noopener">Enrique Ramon</a></li>
+        <li>📬 Email: <a href="mailto:e@upgp.xyz">e@upgp.xyz</a></li>
+      </ul>
+    </footer>
+  </main>
+  <script>
+    function copyCode(button) {
+      const code = button.closest('.code-block')?.querySelector('code');
+      if (!code) return;
+  
+      const text = code.textContent.trim().replace(/\n/g, '');
+  
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          button.textContent = '✅';
+          setTimeout(() => button.textContent = '📋', 2000);
+        })
+        .catch(err => {
+          console.error('Copy failed:', err);
+          button.textContent = '❌';
+          setTimeout(() => button.textContent = '📋', 2000);
+        });
+    }
+  </script>  
+</body>
+</html>
