@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /upload
+Disallow: /id
+Allow: /register
+Allow: /key
+Allow: /json
+Sitemap: https://upgp.xyz/sitemap.xml

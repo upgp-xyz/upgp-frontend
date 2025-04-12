@@ -2,21 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>{title}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{favicon}" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- SEO Meta -->
   <meta name="description" content="{description}" />
-  <meta name="keywords" content="PGP, encrypted upload, secure file transfer, OpenPGP, privacy, secure gateway, {brand}" />
+  <meta name="keywords" content="PGP, file upload, encryption, OpenPGP, secure drop, zero trust, {brand}" />
   <meta name="author" content="{author}" />
+
+  <!-- Open Graph Meta -->
   <meta property="og:title" content="{title}" />
   <meta property="og:description" content="{description}" />
-  <meta property="og:type" content="website" />
+  <meta property="og:image" content="{ogImage}" />
+  <meta property="og:image:alt" content="{title}" />
   <meta property="og:url" content="{url}" />
-  <meta property="og:image" content="{previewImage}" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Meta -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{title}" />
   <meta name="twitter:description" content="{description}" />
-  <meta name="twitter:image" content="{previewImage}" />
-  <link rel="icon" href="{favicon}" />
+  <meta name="twitter:image" content="{ogImage}" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="{url}" />
+
+  <!-- Apple Touch Icon & Manifest -->
+  <link rel="apple-touch-icon" href="/logo192.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Sitemap -->
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+  <!-- Page Title -->
+  <title>{title}</title>
+
   <link rel="stylesheet" href="/landing.css" />
 </head>
 <body>
@@ -71,7 +92,7 @@
         <p><strong>Step 4: Upload it to register</strong></p>
         <div class="code-block">
           <div class="code-scroll">
-            <code>cat encrypted.asc | sed ':a;N;$!ba;s/\n/\\n/g' | awk '{print \"{\\\"content\\\":\\\"\" $0 \"\\\"}\"}' &gt; payload.json</code>
+            <code>cat encrypted.asc | sed ':a;N;$!ba;s/\n/\\n/g' | awk '{print "{\"content\":\"" $0 "\"}"}' &gt; payload.json</code>
           </div>
           <button class="copy-icon" onclick="copyCode(this)">📋</button>
         </div>
@@ -122,13 +143,13 @@
       </ul>
     </footer>
   </main>
-  <script>
+  <script nonce="{nonce}">
     function copyCode(button) {
       const code = button.closest('.code-block')?.querySelector('code');
       if (!code) return;
-  
+
       const text = code.textContent.trim().replace(/\n/g, '');
-  
+
       navigator.clipboard.writeText(text)
         .then(() => {
           button.textContent = '✅';

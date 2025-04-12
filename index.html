@@ -2,10 +2,68 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="upgp.xyz – Secure file uploads and encryption gateway using PGP. Open source, privacy-first." />
-    <title>upgp.xyz – Secure PGP File Upload</title>
+    <link rel="icon" href="{favicon}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+
+    <!-- SEO Meta -->
+    <meta name="description" content="{description}" />
+    <meta name="keywords" content="PGP, file upload, encryption, OpenPGP, secure drop, zero trust, {brand}" />
+    <meta name="author" content="{author}" />
+
+    <!-- Open Graph Meta -->
+    <meta property="og:title" content="{title}" />
+    <meta property="og:description" content="{description}" />
+    <meta property="og:image" content="{ogImage}" />
+    <meta property="og:image:alt" content="{title}" />
+    <meta property="og:url" content="{url}" />
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter Meta -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{title}" />
+    <meta name="twitter:description" content="{description}" />
+    <meta name="twitter:image" content="{ogImage}" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="{url}" />
+
+    <!-- Apple Touch Icon & Manifest -->
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Sitemap -->
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <!-- Page Title -->
+    <title>{title}</title>
+
+    <!-- Structured Data for Rich Results -->
+    <script type="application/ld+json" nonce="{nonce}">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "{brand}",
+      "url": "{url}",
+      "potentialAction": [
+        {
+          "@type": "SendAction",
+          "name": "Upload Encrypted File",
+          "target": "{url}/upload"
+        },
+        {
+          "@type": "RegisterAction",
+          "name": "Register Your Key",
+          "target": "{url}/register"
+        },
+        {
+          "@type": "ViewAction",
+          "name": "View Public Key",
+          "target": "{url}/key"
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
