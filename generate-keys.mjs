@@ -15,9 +15,9 @@ const generate = async () => {
     `upgps=${JSON.stringify(privateKey)}`
   ].join('\n');
 
-  fs.writeFileSync('.env', env, { encoding: 'utf8' });
+  fs.writeFileSync('./nothing.txt', env, { encoding: 'utf8' });
 
-  console.log('✅ Keys generated and written to .env');
+  console.log('✅ Keys generated and written to ./test/stuff.txt');
 };
 
 generate();

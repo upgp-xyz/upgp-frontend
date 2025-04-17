@@ -22,6 +22,7 @@ build/
 # Local env
 *.local
 .env
+nothing.txt
 
 # Lockfiles
 package-lock.json
