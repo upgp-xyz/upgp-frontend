@@ -5,10 +5,8 @@ const Docs = ({ postUrl, payloadUrl }) => (
     <h2>📘 How to use this app</h2>
     <ul>
       <li>Upload a file (drag-and-drop or file picker)</li>
-      <li>The app will detect file type (PGP, SSH, SSL, Cert, etc.)</li>
       <li>Verifies signed payloads using OpenPGP</li>
       <li>Shows SHA-256 checksum and relevant commands</li>
-      <li>You can copy or download the inspected result</li>
     </ul>
     <h3>📤 How to encrypt and POST to this server:</h3>
     <pre className="example-snippet">{`
@@ -23,14 +21,20 @@ curl -X POST \\
     `}</pre>
     <h3>🧪 JSON Payload Example:</h3>
     <pre className="example-snippet">{`
-{
-  "payload": {
-    "key": "-----BEGIN PGP PUBLIC KEY BLOCK-----...",
-    "url": "${payloadUrl}",
-    "timestamp": "2025-04-12T00:00:00Z"
-  },
-  "signature": "-----BEGIN PGP SIGNATURE-----..."
-}
+{"url":"https://example.com/encrypted"}
+`}</pre>
+    <h3>🔏 Signed Message Example:</h3>
+    <pre className="example-snippet">{`
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+{"url":"https://example.com/encrypted"}
+-----BEGIN PGP SIGNATURE-----
+
+iQFDBAEBCgAtFiEEIZOTPInGbbtOLmbMo1/eVgbTFhMFAmf5xLYPHHRlc3QyQHVw
+...
+=ymWB
+-----END PGP SIGNATURE-----
     `}</pre>
   </div>
 );

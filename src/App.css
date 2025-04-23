@@ -156,20 +156,51 @@ body {
   border-left: 4px solid #4fc3f7;
 }
 
-.actions button {
-  background-color: #2c2c2c;
-  color: #eee;
-  border: 1px solid #444;
-  padding: 0.5rem 1rem;
-  margin: 0.25rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+.fancy-box {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  padding: 1.2rem;
+  margin: 1.5rem auto;
+  border-radius: 10px;
+  max-width: 640px;
+  text-align: left;
 }
 
-.actions button:hover {
-  background-color: #3d3d3d;
+.upload-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
 }
+
+.upload-controls input[type="file"] {
+  padding: 0.5rem;
+  border-radius: 6px;
+  background-color: #1e1e1e;
+  border: 1px solid #444;
+  color: #ccc;
+}
+
+.upload-controls .file-name {
+  font-size: 0.95rem;
+  color: #aaa;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.actions button {
+  flex-grow: 1;
+  min-width: 120px;
+  text-align: center;
+}
+
 
 /* ============================= */
 /*         FOOTER + TOGGLE      */
@@ -299,3 +330,122 @@ footer button:hover {
   color: #dcdcaa;
 }
 
+
+.file-input-styled {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.custom-file-upload {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  color: #ccc;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.custom-file-upload:hover {
+  background-color: #2a2a2a;
+}
+
+.custom-file-upload input[type="file"] {
+  display: none;
+}
+
+.submit-btn-green {
+  background-color: #2e7d32;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 1rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submit-btn-green:hover {
+  background-color: #388e3c;
+}
+
+.api-url-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  font-family: monospace;
+  position: relative;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.api-url-bar .method {
+  color: #ff8a65;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.api-url-bar input {
+  flex: 1;
+  background-color: transparent;
+  color: #aaa;
+  border: none;
+  font-size: 0.95rem;
+  outline: none;
+  cursor: not-allowed;
+}
+
+.api-url-bar .lock-icon {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.api-url-bar:hover .lock-icon {
+  opacity: 0.5;
+}
+
+.api-url-bar .info-icon {
+  position: relative;
+  cursor: help;
+  font-size: 1rem;
+  color: #90caf9;
+}
+
+.api-url-bar .tooltip {
+  position: absolute;
+  bottom: -75px;
+  right: 0;
+  background: #2a2a2a;
+  color: #ccc;
+  padding: 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  display: none;
+  z-index: 9999;
+  text-align: left;
+}
+
+.api-url-bar .tooltip a {
+  color: #4fc3f7;
+  text-decoration: underline;
+}
+
+.api-url-bar .info-icon:hover .tooltip {
+  display: block;
+}

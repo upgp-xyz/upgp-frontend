@@ -61,13 +61,15 @@ export const verifyPayloadSignature = async (signedPayload, updateState = () => 
     await verified;
 
     // 🔄 Update state with full parsed content
-    updateState({
+    const result = {
       raw: signedPayload,
       parsed,
-      publicKey: serverPublicKey.armor(), // optional if needed elsewhere
-    });
+      publicKey: serverPublicKey.armor(),
+    };
 
-    return true;
+    updateState(result);
+
+    return result;
   } catch (err) {
     console.warn('⚠️ Signature verification failed:', err.message);
     return false;

@@ -16,13 +16,15 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileTag, setFileTag] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showEncryption, setShowEncryption] = useState(false);
+  const [showPublicKeys, setShowPublicKeys] = useState(false);
   const [showResponse, setShowResponse] = useState(false);
-  const [checksum, setChecksum] = useState(null);
+  const [checksumBefore, setChecksumBefore] = useState(null);
+  const [checksumAfter, setChecksumAfter] = useState(null);
   const [commandSnippets, setCommandSnippets] = useState(null);
   const [upgpDATA, setupgpDATA] = useState('');
   const [publicKey, setPublicKey] = useState('');
+  const [uploadUrl, setUploadUrl] = useState('');
 
   const ORIGIN = window.location.origin.replace(/\/$/, '');
   const PATHNAME = window.location.pathname.replace(/^\/|\/$/g, '');
@@ -68,101 +70,56 @@ function App() {
     text.includes('-----BEGIN ') && text.includes('-----END ')
   );
   
-  
   useEffect(() => {
     (async () => {
       try {
         const keyData = window.__UPGP_DATA__ || {};
-        const verified = await verifyPayloadSignature(keyData, (result) => {
-          setupgpDATA(result);
-          if (result?.publicKey) {
-            setPublicKey(result.publicKey);
-          }
-        });
+        const verifiedResult = await verifyPayloadSignature(keyData);
   
-        if (!verified) {
+        if (!verifiedResult) {
           console.warn('⛔ Invalid or unverifiable payload.');
+          return;
+        }
+  
+        setupgpDATA(verifiedResult);
+  
+        let rawKey = verifiedResult?.parsed?.key || verifiedResult?.publicKey || '';
+
+        console.log('[debug] parsed.key:', verifiedResult?.parsed?.key);
+        console.log('[debug] publicKey:', verifiedResult?.publicKey);
+        
+        if (typeof rawKey === 'string') {
+          // Detect if it's double-escaped (\\n instead of \n)
+          if (rawKey.includes('\\n')) {
+            try {
+              // JSON-parse to convert \\n → \n and preserve the real newlines
+              rawKey = JSON.parse(`"${rawKey}"`);
+            } catch (err) {
+              console.warn('❌ Could not JSON-parse rawKey:', err);
+            }
+          }
+        
+          const trimmedKey = rawKey.trim();
+          console.log('[debug] trimmedKey:\n', trimmedKey);
+          setPublicKey(trimmedKey);
+        }
+        
+
+        if (verifiedResult?.parsed?.url) {
+          setUploadUrl(verifiedResult.parsed.url);
+        }else{
+          setUploadUrl(DEFAULT_UPLOAD_URL);
         }
       } catch (err) {
-        console.warn('Could not verify injected key:', err);
+        console.warn('❌ Could not verify injected key:', err);
       }
     })();
   }, []);
 
-  const analyzeFile = async (file) => {
-    try {
-      const text = await file.text();
-      const buffer = await file.arrayBuffer();
-  
-      const rawHashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-      const rawHashArray = Array.from(new Uint8Array(rawHashBuffer));
-      const rawChecksum = rawHashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-      setChecksum(rawChecksum);
-  
-      if (typeof text === 'string') {
-        if (isSSLPrivateKey(text)) {
-          setCommandSnippets(`# SSL PRIVATE KEY\nopenssl rsa -in your.key -check`);
-          setFileTag('SSL Key');
-        } else if (isPGPFile(text)) {
-          setCommandSnippets(`# PGP FILE\ngpg --verify file.asc`);
-          setFileTag('PGP File');
-        } else if (isX509Cert(text)) {
-          setCommandSnippets(`# X.509 CERTIFICATE\nopenssl x509 -in cert.crt -text -noout`);
-          setFileTag('X.509 Cert');
-        } else if (isSSHKey(text)) {
-          setCommandSnippets(`# SSH PUBLIC KEY\nssh-keygen -lf yourkey.pub`);
-          setFileTag('SSH Key');
-        } else if (isJWT(text)) {
-          setCommandSnippets(`# JWT Token\njwt decode <your-token-here>`);
-          setFileTag('JWT');
-        } else if (isBase64Encoded(text)) {
-          setCommandSnippets(`# Base64 Encoded Content\nbase64 -d yourfile > decoded.out`);
-          setFileTag('Base64');
-        } else if (isPEMFormat(text)) {
-          setCommandSnippets(`# Generic PEM File\nopenssl asn1parse -in yourfile.pem`);
-          setFileTag('PEM Format');
-        } else {
-          setCommandSnippets(`# Unknown file type\nfile your-upload`);
-          setFileTag('Unknown');
-        }
-      }
-  
-      setMessage('🛡️ Payload will be encrypted before POST.');
-      setSelectedFile(file);
-  
-      if (upgpDATA?.payload?.data) {
-        const openpgp = await import('openpgp');
-        const publicKey = await openpgp.readKey({ armoredKey: upgpDATA.payload.data });
-  
-        const encrypted = await openpgp.encrypt({
-          message: await openpgp.createMessage({ text: typeof text === 'string' ? text : '' }),
-          encryptionKeys: publicKey,
-        });
-  
-        const encryptedBuffer = new TextEncoder().encode(encrypted);
-        const encryptedHashBuffer = await crypto.subtle.digest('SHA-256', encryptedBuffer);
-        const encryptedHashArray = Array.from(new Uint8Array(encryptedHashBuffer));
-        const encryptedChecksum = encryptedHashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  
-        setChecksum((prev) => ({ raw: rawChecksum, encrypted: encryptedChecksum }));
-  
-        const filename = file.name || 'file.txt';
-        setCommandSnippets({
-          raw: `cat ${filename} | sha256sum`,
-          encrypted: `gpg --encrypt --armor --recipient-file upgp.asc ${filename} > encrypted.asc && sha256sum encrypted.asc`,
-          upload: `curl -X POST https://upgp.xyz/register/upload \\\n  -H "Content-Type: application/json" \\\n  -d '{"content":"'"$(cat encrypted.asc | sed ':a;N;$!ba;s/\n/\\n/g')"'}'`
-        });
-      }
-    } catch (error) {
-      console.error('Error analyzing file:', error);
-      setMessage('❌ Failed to analyze the file.');
-    }
-  };  
-
-  const handleFileChange = async (event) => {
+  const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file) await analyzeFile(file);
-  };
+    if (file) setSelectedFile(file);
+  };  
 
   useEffect(() => {
     let dragCounter = 0;
@@ -172,19 +129,83 @@ function App() {
     const handleDrop = (e) => {
       e.preventDefault(); setIsDragging(false); dragCounter = 0;
       const file = e.dataTransfer.files[0];
-      if (file) analyzeFile(file);
+      if (file) setSelectedFile(file);
     };
+  
     window.addEventListener('dragenter', handleDragEnter);
     window.addEventListener('dragleave', handleDragLeave);
     window.addEventListener('dragover', handleDragOver);
     window.addEventListener('drop', handleDrop);
+  
     return () => {
       window.removeEventListener('dragenter', handleDragEnter);
       window.removeEventListener('dragleave', handleDragLeave);
       window.removeEventListener('dragover', handleDragOver);
       window.removeEventListener('drop', handleDrop);
     };
-  }, []);
+  }, []); 
+  
+  useEffect(() => {
+    if (publicKey && selectedFile) {
+      analyzeFile(selectedFile);
+    }
+  }, [publicKey, selectedFile]);
+
+  const analyzeFile = async (file) => {
+    try {
+      const text = await file.text();
+      const buffer = await file.arrayBuffer();
+  
+      // SHA256 of original file
+      const rawHashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const rawHashArray = Array.from(new Uint8Array(rawHashBuffer));
+      const rawChecksum = rawHashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+      setChecksumBefore(rawChecksum);
+  
+      setMessage('🛡️ Payload will be encrypted before POST.');
+      setSelectedFile(file);
+  
+      // Encrypt using OpenPGP.js
+      const openpgp = await import('openpgp');
+
+      console.log('[ENCRYPT] Using publicKey:', publicKey);
+      console.log('[ENCRYPT] typeof publicKey:', typeof publicKey);
+      console.log('[ENCRYPT] Starts with header?', publicKey?.startsWith('-----BEGIN'));
+      
+      if (!publicKey || typeof publicKey !== 'string') {
+        throw new Error('🛑 Public key is missing or invalid');
+      }
+      
+      const encryptionKeys = await openpgp.readKey({
+        armoredKey: publicKey.trim(), // <-- just in case extra linebreaks
+      });
+      
+  
+      const encrypted = await openpgp.encrypt({
+        message: await openpgp.createMessage({ text: text }),
+        encryptionKeys,
+      });
+  
+      // SHA256 of encrypted result
+      const encryptedBuffer = new TextEncoder().encode(encrypted);
+      const encryptedHashBuffer = await crypto.subtle.digest('SHA-256', encryptedBuffer);
+      const encryptedHashArray = Array.from(new Uint8Array(encryptedHashBuffer));
+      const encryptedChecksum = encryptedHashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+      console.log(encryptedChecksum);
+      setChecksumAfter(encryptedChecksum);
+  
+      // Generate terminal-style display
+      const publicKeyLine = `# SHA-256 of original file\nsha256sum ${file.name}\n> ${rawChecksum}`;
+      const encryptLine = `# Encrypt using GPG and show hash\ngpg --encrypt --armor --recipient-file upgp.asc ${file.name} > encrypted.asc`;
+      const hashLine = `sha256sum encrypted.asc\n> ${encryptedChecksum}`;
+      const curlLine = `# Upload with curl\ncurl -X POST ${uploadUrl} \\\n  -H "Content-Type: application/json" \\\n  -d '{"content":"<encrypted.asc contents>"}'`;
+  
+      setCommandSnippets(`${publicKeyLine}\n\n${encryptLine}\n${hashLine}\n\n${curlLine}`);
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+      setMessage('❌ Failed to analyze the file.');
+    }
+  };
 
   const handleUpload = async () => {
     if (!selectedFile || !publicKey) return;
@@ -193,28 +214,6 @@ function App() {
     try {
       const openpgp = await import('openpgp');
       const fileText = await selectedFile.text();
-  
-      let uploadUrl = DEFAULT_UPLOAD_URL;
-  
-      // ✅ NEW: Parse and verify upload config from signed server payload
-      const signed = window.__UPGP_DATA__?.signature;
-      if (signed) {
-        try {
-          const message = await verifySignedMessageWithDriftCheck({
-            openpgp,
-            signed,
-            serverPublicKeyArmored: SERVER_PUBLIC_KEY,
-          });
-      
-          const configPayload = JSON.parse(message.getText());
-          if (configPayload?.config?.startsWith('http')) {
-            uploadUrl = configPayload.config;
-          }
-        } catch (e) {
-          console.warn('⚠️ Failed to verify upload config. Falling back to default.', e);
-        }
-      }
-  
       const encryptionKeys = await openpgp.readKey({ armoredKey: publicKey });
   
       const encrypted = await openpgp.encrypt({
@@ -256,13 +255,20 @@ function App() {
       
           if (parsed.id && !parsed.signed) {
             fullLink = `${window.location.origin}${parsed.root}`;
-            displayHTML += `ID: ${parsed.id}<br>`;
-            displayHTML += `Upload: ${window.location.origin}${parsed.upload}<br>`;
-            displayHTML += `Key: ${window.location.origin}${parsed.key}<br>`;
-            displayHTML += `👉 <a href="${fullLink}" target="_blank">${fullLink}</a><br>`;
-            displayHTML += `Continue to your private registration page to complete setup.<br>`;
-            displayHTML += `This page is just for you — it records your encrypted information.<br>`;
-            displayHTML += `📌 Save this URL and remember your ID! You’ll need it to return.<br>`;
+            if ( parsed.message === '✅ Bin Successfully Configured.') {
+              displayHTML += `👉 <a href="${fullLink}" target="_blank">${fullLink}</a><br>`;
+              displayHTML += `<br><strong>Save this portal URL!</strong><br><br>`;
+              displayHTML += `This page is only for you.<br>`;
+              displayHTML += `📌 <strong>Save this URL or remember your ID!</strong> You’ll need it to return.<br>`;
+            }else{
+              displayHTML += `ID: ${parsed.id}<br>`;
+              displayHTML += `Upload: ${window.location.origin}${parsed.upload}<br>`;
+              displayHTML += `Key: ${window.location.origin}${parsed.key}<br>`;
+              displayHTML += `👉 <a href="${fullLink}" target="_blank">${fullLink}</a><br>`;
+              displayHTML += `Complete registration by visiting the portal URL.<br>`;
+              displayHTML += `This page is only for you.<br>`;
+              displayHTML += `📌 Save this URL or remember your ID! You’ll need it to return.<br>`;
+            }
           }
         } catch {
           displayHTML = signedText.replace(/\n/g, '<br>').replace(/  /g, '&nbsp;&nbsp;');
@@ -334,93 +340,94 @@ function App() {
     <div className={`upload-form ${isDragging ? 'dragging' : ''}`}>
       {!isDragging && (
         <>
-          <HeaderWithAnimatedXYZ fullUrl={FULL_URL} />
-  
           {successNotification && (
             <div className="success-banner">
-              {/* Top-left "View Server Response" button */}
-              <button
-                className="info-btn"
-                onClick={() => setShowResponse((prev) => !prev)}
-              >
+              <button className="info-btn" onClick={() => setShowResponse(prev => !prev)}>
                 ℹ View Server Response
               </button>
-
-              {/* Success message content */}
               <div
                 className="success-notification"
                 dangerouslySetInnerHTML={{ __html: successNotification }}
               />
-
-              {/* Top-right dismiss button */}
-              <button
-                onClick={() => setSuccessNotification('')}
-                className="dismiss-btn"
-              >
-                ✖
-              </button>
+              <button onClick={() => setSuccessNotification('')} className="dismiss-btn">✖</button>
             </div>
           )}
-
+  
           {showResponse && message && (
             <pre className="output">
               <code dangerouslySetInnerHTML={{ __html: syntaxHighlightJSON(message) }} />
             </pre>
           )}
+
+          <div className="api-url-bar">
+            <span className="method">POST</span>
+            <input type="text" value={uploadUrl} disabled />
+            <span className="lock-icon">🔒</span>
+            <div className="info-icon" title="to learn more&#10;&#10;Click here">
+              ℹ
+              <div className="tooltip">
+                to learn more<br />
+                <a href="/learn" target="_blank" rel="noopener noreferrer">Click here</a>
+              </div>
+            </div>
+          </div>
   
-          <section className="upload-box">
-            <p>Select or drop a file to begin</p>
-            <div className="file-input-wrapper">
+          <section className="upload-box fancy-box">
+          <p>Select or drop a file to begin</p>
+          <div className="file-input-styled">
+            <label htmlFor="file-upload" className="custom-file-upload">
+              <span>{selectedFile ? selectedFile.name : 'Choose a file...'}</span>
               <input
                 type="file"
                 id="file-upload"
                 accept=".pem,.crt,.cer,.asc,.txt"
                 onChange={handleFileChange}
               />
-              {fileTag && <div className="tag">{getTagIcon(fileTag)} {fileTag}</div>}
-              {selectedFile && (
-                <div className="file-name">📄 Selected: {selectedFile.name}</div>
-              )}
-            </div>
+            </label>
+          </div>
 
-            {selectedFile && (
-              <button onClick={handleUpload} disabled={uploading}>
+          {selectedFile && (
+            <div className="submit-row">
+              <button className="submit-btn-green" onClick={handleUpload} disabled={uploading}>
                 {uploading ? 'Uploading...' : 'Submit File'}
               </button>
-            )}
+              {fileTag && <div className="tag right-tag">{getTagIcon(fileTag)} {fileTag}</div>}
+            </div>
+          )}
 
-            {selectedFile && !message.includes('✅ Encryption and Upload successful') && (
-              <div className="disclaimer">
-                ⚠️ <strong>Review before submitting.</strong> Click the{' '}
-                <span className="submit-hint">green button</span> to send.
-              </div>
-            )}
-          </section>
-  
+          {selectedFile && !message.includes('✅ Encryption and Upload successful') && (
+            <div className="disclaimer">
+              ⚠️ <strong>Review before submitting.</strong> Click the{' '}
+              <span className="submit-hint">green button</span> to send.
+            </div>
+          )}
+
           <div className="actions">
             <button onClick={() => setShowDocs(!showDocs)}>{showDocs ? 'Hide Docs' : 'Show Docs'}</button>
-            <button onClick={() => copyToClipboard(message)}>Copy Output</button>
-            <button onClick={() => downloadText('output.txt', message)}>Download Output</button>
-            <button onClick={() => setShowResults(!showResults)}>{showResults ? 'Hide Results' : 'Show Results'}</button>
+            <button onClick={() => setShowEncryption(!showEncryption)}>{showEncryption ? 'Hide Encryption' : 'Show Encryption'}</button>
+            <button onClick={() => setShowPublicKeys(!showPublicKeys)}>{showPublicKeys ? 'Hide Public Keys' : 'Show Public Keys'}</button>
           </div>
-  
+        </section>
+
           {showDocs && (
             <Suspense fallback={<div>Loading docs...</div>}>
               <Docs postUrl={FULL_URL} payloadUrl={FULL_URL} />
             </Suspense>
           )}
   
-          {showResults && (
-            <section className="result-box">
-              {checksum && <div className="checksum">SHA-256: {checksum}</div>}
+          {showEncryption && (
+            <section className="result-box fancy-box">
+              {checksumBefore && <div className="checksum">SHA-256 RAW: {checksumBefore}</div>}
+              {checksumAfter && <div className="checksum">SHA-256 ENCRYPTED: {checksumAfter}</div>}
               {commandSnippets && <pre className="commands">{commandSnippets}</pre>}
             </section>
           )}
-  
-          <footer>
-            <button onClick={() => setShowDetails(!showDetails)}>{showDetails ? 'Hide Payload' : 'Show Payload'}</button>
-            {showDetails && <pre className="payload-view">{JSON.stringify(upgpDATA, null, 2)}</pre>}
-          </footer>
+
+          {showPublicKeys && (
+            <section className="result-box fancy-box">
+              <pre className="payload-view">{JSON.stringify(upgpDATA, null, 2)}</pre>
+            </section>
+          )}
         </>
       )}
   
