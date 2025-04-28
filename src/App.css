@@ -449,3 +449,82 @@ footer button:hover {
 .api-url-bar .info-icon:hover .tooltip {
   display: block;
 }
+
+.key-section-header {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.logged-in-icon {
+  margin-left: 5px;
+  font-size: 18px;
+  cursor: default;
+}
+
+/* Secure form theming - Dark Mode Style */
+
+.secure-form-section label {
+  display: block;
+  font-family: 'Fira Code', monospace;
+  color: #cccccc;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.secure-form-section .secure-url-input {
+  width: 100%;
+  max-width: 600px;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 6px;
+  outline: none;
+  margin-bottom: 15px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.secure-form-section .secure-url-input:focus {
+  border-color: #666;
+  box-shadow: 0 0 4px #666;
+}
+
+.secure-form-section .secure-button {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  font-family: 'Fira Code', monospace;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.secure-form-section .secure-button:hover {
+  background-color: #333;
+  border-color: #666;
+}
+
+.file-upload-button {
+  display: inline-block;
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  font-family: 'Fira Code', monospace;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.file-upload-button:hover {
+  background-color: #333;
+  border-color: #666;
+}

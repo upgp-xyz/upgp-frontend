@@ -18,11 +18,14 @@ function App() {
   const [showDocs, setShowDocs] = useState(false);
   const [showEncryption, setShowEncryption] = useState(false);
   const [showPublicKeys, setShowPublicKeys] = useState(false);
+  const [showGateway, setShowGateway] = useState(false);
+  const [signedMessage, setSignedMessage] = useState('');
   const [showResponse, setShowResponse] = useState(false);
   const [checksumBefore, setChecksumBefore] = useState(null);
   const [checksumAfter, setChecksumAfter] = useState(null);
   const [commandSnippets, setCommandSnippets] = useState(null);
   const [upgpDATA, setupgpDATA] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
   const [publicKey, setPublicKey] = useState('');
   const [uploadUrl, setUploadUrl] = useState('');
 
@@ -156,6 +159,39 @@ function App() {
       const text = await file.text();
       const buffer = await file.arrayBuffer();
   
+      // Before anything else: try detecting if this is a PRIVATE KEY login attempt
+      const openpgp = await import('openpgp');
+  
+      try {
+        const text = await file.text();
+        const buffer = await file.arrayBuffer();
+    
+        // Check if it's a PRIVATE KEY
+        const openpgp = await import('openpgp');
+    
+        try {
+          const maybePrivateKey = await openpgp.readPrivateKey({ armoredKey: text.trim() });
+    
+          if (maybePrivateKey) {
+            console.log('🔑 Private Key detected via Owner Login.');
+    
+            setPrivateKey(text.trim());
+            setSelectedFile(null);
+            setMessage('✅ Private Key loaded successfully. You are now logged in.');
+            return;
+          }
+        } catch (privateKeyError) {
+          console.log('📝 Not a Private Key. Continuing as regular file upload.');
+          // No action needed here; just continue as normal
+        }
+    
+      } catch (privateKeyError) {
+        console.log('📝 Not a Private Key. Continuing as regular file upload.');
+        // No action needed here; just continue as normal
+      }
+
+      // --- Normal File Flow ---
+  
       // SHA256 of original file
       const rawHashBuffer = await crypto.subtle.digest('SHA-256', buffer);
       const rawHashArray = Array.from(new Uint8Array(rawHashBuffer));
@@ -165,21 +201,17 @@ function App() {
       setMessage('🛡️ Payload will be encrypted before POST.');
       setSelectedFile(file);
   
-      // Encrypt using OpenPGP.js
-      const openpgp = await import('openpgp');
-
       console.log('[ENCRYPT] Using publicKey:', publicKey);
       console.log('[ENCRYPT] typeof publicKey:', typeof publicKey);
       console.log('[ENCRYPT] Starts with header?', publicKey?.startsWith('-----BEGIN'));
-      
+  
       if (!publicKey || typeof publicKey !== 'string') {
         throw new Error('🛑 Public key is missing or invalid');
       }
-      
+  
       const encryptionKeys = await openpgp.readKey({
-        armoredKey: publicKey.trim(), // <-- just in case extra linebreaks
+        armoredKey: publicKey.trim(),
       });
-      
   
       const encrypted = await openpgp.encrypt({
         message: await openpgp.createMessage({ text: text }),
@@ -201,11 +233,12 @@ function App() {
       const curlLine = `# Upload with curl\ncurl -X POST ${uploadUrl} \\\n  -H "Content-Type: application/json" \\\n  -d '{"content":"<encrypted.asc contents>"}'`;
   
       setCommandSnippets(`${publicKeyLine}\n\n${encryptLine}\n${hashLine}\n\n${curlLine}`);
+  
     } catch (error) {
       console.error('Error analyzing file:', error);
       setMessage('❌ Failed to analyze the file.');
     }
-  };
+  };    
 
   const handleUpload = async () => {
     if (!selectedFile || !publicKey) return;
@@ -289,17 +322,36 @@ function App() {
       setUploading(false);
     }
   };  
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const downloadText = (filename, text) => {
-    const blob = new Blob([text], { type: 'text/plain' });
+  
+  const handleDownload = () => {
+    if (!privateKey) {
+      alert('No private key available to download.');
+      return;
+    }
+  
+    const blob = new Blob([privateKey], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
+    link.href = url;
+    link.download = 'private_key.asc';
     link.click();
+    URL.revokeObjectURL(url);
+  };  
+
+  const handleGenerateKeys = async () => {
+    const openpgp = await import('openpgp');
+  
+    const { privateKey: priv, publicKey: pub } = await openpgp.generateKey({
+      type: 'rsa',
+      rsaBits: 2048,
+      userIDs: [{ name: 'User', email: 'user@example.com' }],
+    });
+  
+    setPrivateKey(priv);
+  
+    const blob = new Blob([pub], { type: 'text/plain' });
+    const file = new File([blob], 'publickey.asc', { type: 'text/plain' });
+    setSelectedFile(file); // this will be your "upload-ready" file
   };
 
   const getTagIcon = (tag) => {
@@ -336,6 +388,35 @@ function App() {
     });
   };
 
+  const handleSignUrl = async () => {
+    if (!uploadUrl.startsWith('http')) {
+      alert('Please enter a valid URL.');
+      return;
+    }
+  
+    const payload = { url: uploadUrl };
+  
+    try {
+      const openpgp = await import('openpgp');
+  
+      const privateKeyObj = await openpgp.readPrivateKey({ armoredKey: privateKey });
+  
+      const message = await openpgp.createCleartextMessage({
+        text: JSON.stringify(payload),
+      });
+  
+      const signed = await openpgp.sign({
+        message,
+        signingKeys: privateKeyObj,
+      });
+  
+      setSignedMessage(signed.toString());
+    } catch (err) {
+      console.error('Error generating signed message:', err);
+      alert('Failed to sign. Check console for details.');
+    }
+  };  
+
   return (
     <div className={`upload-form ${isDragging ? 'dragging' : ''}`}>
       {!isDragging && (
@@ -362,12 +443,24 @@ function App() {
           <div className="api-url-bar">
             <span className="method">POST</span>
             <input type="text" value={uploadUrl} disabled />
-            <span className="lock-icon">🔒</span>
-            <div className="info-icon" title="to learn more&#10;&#10;Click here">
+            <span className="lock-icon">
+              🔒
+              <div className="tooltip">
+                  Target provided by Private Key
+              </div>
+            </span>
+            {privateKey && (
+              <span className="logged-in-icon">
+                ✅
+                <div className="tooltip">
+                  Private key loaded! You're ready.
+                </div>
+              </span>
+            )}
+            <div className="info-icon">
               ℹ
               <div className="tooltip">
-                to learn more<br />
-                <a href="/learn" target="_blank" rel="noopener noreferrer">Click here</a>
+                Still under construction.<br />Thanks.
               </div>
             </div>
           </div>
@@ -404,10 +497,76 @@ function App() {
 
           <div className="actions">
             <button onClick={() => setShowDocs(!showDocs)}>{showDocs ? 'Hide Docs' : 'Show Docs'}</button>
+
+            {window.location.pathname === '/register' && (
+              <button onClick={() => {
+                if (!showPublicKeys) handleGenerateKeys();
+                setShowPublicKeys(!showPublicKeys);
+              }}>
+                {showPublicKeys ? 'Hide Keys' : 'Generate Keys'}
+              </button>
+            )}
+
+            {window.location.pathname !== '/register' && (
+              <>
+                {privateKey ? (
+                  <button onClick={() => setShowGateway(!showGateway)}>
+                    {showGateway ? 'Hide Gateway' : 'Show Gateway'}
+                  </button>
+                ) : (
+                  <label className="file-upload-button">
+                    Owner Login
+                    <input
+                      type="file"
+                      accept=".asc"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+              </>
+            )}
+
             <button onClick={() => setShowEncryption(!showEncryption)}>{showEncryption ? 'Hide Encryption' : 'Show Encryption'}</button>
             <button onClick={() => setShowPublicKeys(!showPublicKeys)}>{showPublicKeys ? 'Hide Public Keys' : 'Show Public Keys'}</button>
           </div>
         </section>
+
+        {showGateway && privateKey && window.location.pathname !== '/register' && (
+          <section className="result-box fancy-box secure-form-section">
+            <label htmlFor="encryption-url">Enter URL to encrypt and sign:</label>
+            
+            <input
+              id="encryption-url"
+              type="text"
+              value={uploadUrl}
+              onChange={(e) => setUploadUrl(e.target.value)}
+              placeholder="https://example.com/encrypted"
+              className="secure-url-input"
+            />
+
+            <button onClick={handleSignUrl} className="secure-button">
+              Generate Signed Message
+            </button>
+
+            {signedMessage && (
+              <>
+                <h4>Signed Message:</h4>
+                <pre className="payload-view">{signedMessage}</pre>
+              </>
+            )}
+          </section>
+        )}
+
+        {showPublicKeys && privateKey && (
+            <section className="result-box fancy-box">
+              <div className="key-section-header">
+                <button onClick={handleDownload} title="Download Private Key">💾</button>
+                <button onClick={handleGenerateKeys} title="Generate New Key">🔄</button>
+              </div>
+              <pre className="payload-view">{privateKey}</pre>
+            </section>
+          )}
 
           {showDocs && (
             <Suspense fallback={<div>Loading docs...</div>}>
